@@ -33,9 +33,12 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
+            # Tag main branch as 'latest'
             type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=
+            # Additional tags for better organization
+            type=ref,event=branch,pattern=main,enable=true
 
       - name: Build and push
         uses: docker/build-push-action@v5
