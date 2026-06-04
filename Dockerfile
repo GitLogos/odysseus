@@ -34,8 +34,8 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 # Copy application files
 COPY . .
 
-# Copy entrypoint
-COPY entrypoint.sh /entrypoint.sh
+# Copy entrypoint script from docker directory
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Expose port
