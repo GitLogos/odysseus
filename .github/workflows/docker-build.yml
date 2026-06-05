@@ -18,7 +18,7 @@ on:
         default: ''
         type: string
   push:
-    branches: [main, master]
+    branches: [main, dev, master]
     tags:
       - "v*"
 
@@ -61,7 +61,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
@@ -69,4 +69,4 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo ${{ steps.docker-build.outputs.digest }}
+        run: echo "Digest: ${{ steps.docker-build.outputs.digest }}"
