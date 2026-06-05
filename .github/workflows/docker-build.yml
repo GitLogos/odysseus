@@ -1,26 +1,20 @@
-name: Build and Publish Docker Image
+version: '3.8'
+
+name: Build and Push Docker Image
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to build'
-        required: true
-        default: 'main'
-        type: choice
-        options:
-          - main
-          - dev
-          - master
-      tag:
-        description: 'Tag for the image (optional)'
-        required: false
-        default: ''
-        type: string
   push:
-    branches: [main, dev, master]
-    tags:
-      - "v*"
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -28,45 +22,38 @@ jobs:
     permissions:
       contents: read
       packages: write
-
+      id-token: write
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.branch }}
-
-      - name: Set up Docker Buildx
+        
+      - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
+        
+      - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=
-            type=ref,event=branch,pattern=main,enable=true
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
+        
+      - name: Build and push Docker image with digest
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Image digest
-        run: echo "Digest: ${{ steps.docker-build.outputs.digest }}"
+          load: true
+        
+      - name: Extract digest
+        id: digest
+        run: |
+          echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+        
+      - name: Show digest
+        run: echo "Built image digest: ${{ steps.digest.outputs.digest }}"
