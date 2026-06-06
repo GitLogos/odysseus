@@ -1,0 +1,35 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/UPSTREAM_OWNER/UPSTREAM_REPO.git
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Sync main branch
+        run: |
+          git checkout main
+          git merge upstream/main --ff-only
+
+      - name: Push changes
+        run: git push origin main
