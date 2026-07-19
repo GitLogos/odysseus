@@ -2,34 +2,36 @@ name: Build and Publish Odysseus
 
 on:
   schedule:
-    - cron: '0 0 */5 * *'
-  workflow_dispatch:
+    - cron: '0 0 */5 * *' # Runs at 00:00 UTC every 5 days
+  workflow_dispatch:      # Allows manual trigger
 
 permissions:
   contents: read
-  packages: write
+  packages: write         # Required to publish to GHCR
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Pull the external code from the target source
       - name: Checkout Odysseus Repo
         uses: actions/checkout@v4
         with:
           repository: 'odysseus-dev/odysseus'
           ref: 'main'
 
-      # FIX: This step takes "GitLogos", forces it to "gitlogos", and saves it
+      # 2. Dynamically pull your repo name (GitLogos/odysseus-docker) and force lowercase
       - name: Prepare Lowercase Docker Tag
         run: |
-          IMAGE_PATH="ghcr.io/${{ github.repository_owner }}/odysseus"
+          IMAGE_PATH="ghcr.io/${{ github.repository }}"
           echo "DOCKER_TAG=${IMAGE_PATH,,}:latest" >> $GITHUB_ENV
 
-      # The rest of the workflow remains the same, using the new variable
+      # 3. Setup the build engine
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 4. Log into the registry using the workflow's native token
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -37,12 +39,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 5. Build and push to your registry
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          # References the lowercase tag created in the step above
           tags: ${{ env.DOCKER_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
